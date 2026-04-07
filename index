@@ -72,46 +72,60 @@
       scoreEl.innerText = score;
     }
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      board.forEach((row, y) => {
-        row.forEach((cell, x) => {
-          if (cell) drawBlock(x, y);
-        });
-      });
-
-      piece.forEach((row, y) => {
-        row.forEach((cell, x) => {
-          if (cell) drawBlock(x + pos.x, y + pos.y);
-        });
-      });
-    }
-
     function drawBlock(x, y) {
       ctx.fillStyle = "blue";
       ctx.fillRect(x * SIZE, y * SIZE, SIZE, SIZE);
       ctx.strokeRect(x * SIZE, y * SIZE, SIZE, SIZE);
     }
 
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // board
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (board[y][x]) drawBlock(x, y);
+        }
+      }
+
+      // piece
+      for (let y = 0; y < piece.length; y++) {
+        for (let x = 0; x < piece[y].length; x++) {
+          if (piece[y][x]) drawBlock(x + pos.x, y + pos.y);
+        }
+      }
+    }
+
     function collide(px, py, shape) {
       for (let y = 0; y < shape.length; y++) {
         for (let x = 0; x < shape[y].length; x++) {
-          if (
-            shape[y][x] &&
-            (board[y + py]?.[x + px] !== 0)
-          ) return true;
+          if (!shape[y][x]) continue;
+
+          const newX = x + px;
+          const newY = y + py;
+
+          // bordas
+          if (newX < 0 || newX >= COLS || newY >= ROWS) {
+            return true;
+          }
+
+          // colisão com peças
+          if (newY >= 0 && board[newY][newX]) {
+            return true;
+          }
         }
       }
       return false;
     }
 
     function merge() {
-      piece.forEach((row, y) => {
-        row.forEach((cell, x) => {
-          if (cell) board[y + pos.y][x + pos.x] = 1;
-        });
-      });
+      for (let y = 0; y < piece.length; y++) {
+        for (let x = 0; x < piece[y].length; x++) {
+          if (piece[y][x]) {
+            board[y + pos.y][x + pos.x] = 1;
+          }
+        }
+      }
     }
 
     function rotate(shape) {
@@ -120,8 +134,9 @@
 
     function sweep() {
       let lines = 0;
+
       board = board.filter(row => {
-        if (row.every(cell => cell)) {
+        if (row.every(cell => cell === 1)) {
           lines++;
           return false;
         }
