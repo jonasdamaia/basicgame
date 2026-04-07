@@ -1,191 +1,181 @@
-import React, { useState, useEffect, useCallback } from "react";
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tetris</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f5f5f5;
+    }
+    canvas {
+      background: #fff;
+      border: 2px solid #333;
+      display: block;
+      margin: 10px auto;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tetris</h1>
+  <p>Pontuação: <span id="score">0</span></p>
+  <canvas id="game" width="240" height="480"></canvas>
+  <button onclick="resetGame()">Reiniciar Jogo</button>
 
-const ROWS = 20;
-const COLS = 10;
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
 
-const SHAPES = [
-  [[1, 1, 1, 1]], // I
-  [
-    [1, 1],
-    [1, 1],
-  ], // O
-  [
-    [0, 1, 0],
-    [1, 1, 1],
-  ], // T
-  [
-    [1, 0, 0],
-    [1, 1, 1],
-  ], // J
-  [
-    [0, 0, 1],
-    [1, 1, 1],
-  ], // L
-  [
-    [1, 1, 0],
-    [0, 1, 1],
-  ], // S
-  [
-    [0, 1, 1],
-    [1, 1, 0],
-  ], // Z
-];
+    const ROWS = 20;
+    const COLS = 10;
+    const SIZE = 24;
 
-function createEmptyBoard() {
-  return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-}
+    const SHAPES = [
+      [[1,1,1,1]],
+      [[1,1],[1,1]],
+      [[0,1,0],[1,1,1]],
+      [[1,0,0],[1,1,1]],
+      [[0,0,1],[1,1,1]],
+      [[1,1,0],[0,1,1]],
+      [[0,1,1],[1,1,0]]
+    ];
 
-function randomShape() {
-  return SHAPES[Math.floor(Math.random() * SHAPES.length)];
-}
+    let board, piece, pos, score, gameOver;
 
-function rotate(matrix) {
-  return matrix[0].map((_, i) => matrix.map((row) => row[i]).reverse());
-}
+    function createBoard() {
+      return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    }
 
-export default function Tetris() {
-  const [board, setBoard] = useState(createEmptyBoard());
-  const [piece, setPiece] = useState(randomShape());
-  const [pos, setPos] = useState({ x: 3, y: 0 });
-  const [gameOver, setGameOver] = useState(false);
-  const [score, setScore] = useState(0);
+    function randomPiece() {
+      return SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    }
 
-  const resetGame = () => {
-    setBoard(createEmptyBoard());
-    setPiece(randomShape());
-    setPos({ x: 3, y: 0 });
-    setGameOver(false);
-    setScore(0);
-  };
+    function resetGame() {
+      board = createBoard();
+      piece = randomPiece();
+      pos = { x: 3, y: 0 };
+      score = 0;
+      gameOver = false;
+      updateScore();
+    }
 
-  const collide = (board, piece, pos) => {
-    for (let y = 0; y < piece.length; y++) {
-      for (let x = 0; x < piece[y].length; x++) {
-        if (
-          piece[y][x] &&
-          (board[y + pos.y]?.[x + pos.x] !== 0)
-        ) {
-          return true;
+    function updateScore() {
+      scoreEl.innerText = score;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      board.forEach((row, y) => {
+        row.forEach((cell, x) => {
+          if (cell) drawBlock(x, y);
+        });
+      });
+
+      piece.forEach((row, y) => {
+        row.forEach((cell, x) => {
+          if (cell) drawBlock(x + pos.x, y + pos.y);
+        });
+      });
+    }
+
+    function drawBlock(x, y) {
+      ctx.fillStyle = "blue";
+      ctx.fillRect(x * SIZE, y * SIZE, SIZE, SIZE);
+      ctx.strokeRect(x * SIZE, y * SIZE, SIZE, SIZE);
+    }
+
+    function collide(px, py, shape) {
+      for (let y = 0; y < shape.length; y++) {
+        for (let x = 0; x < shape[y].length; x++) {
+          if (
+            shape[y][x] &&
+            (board[y + py]?.[x + px] !== 0)
+          ) return true;
+        }
+      }
+      return false;
+    }
+
+    function merge() {
+      piece.forEach((row, y) => {
+        row.forEach((cell, x) => {
+          if (cell) board[y + pos.y][x + pos.x] = 1;
+        });
+      });
+    }
+
+    function rotate(shape) {
+      return shape[0].map((_, i) => shape.map(r => r[i]).reverse());
+    }
+
+    function sweep() {
+      let lines = 0;
+      board = board.filter(row => {
+        if (row.every(cell => cell)) {
+          lines++;
+          return false;
+        }
+        return true;
+      });
+
+      while (board.length < ROWS) {
+        board.unshift(Array(COLS).fill(0));
+      }
+
+      if (lines > 0) {
+        score += lines;
+        updateScore();
+      }
+    }
+
+    function drop() {
+      if (gameOver) return;
+
+      if (!collide(pos.x, pos.y + 1, piece)) {
+        pos.y++;
+      } else {
+        merge();
+        sweep();
+        piece = randomPiece();
+        pos = { x: 3, y: 0 };
+
+        if (collide(pos.x, pos.y, piece)) {
+          gameOver = true;
+          alert("Game Over");
         }
       }
     }
-    return false;
-  };
 
-  const merge = (board, piece, pos) => {
-    const newBoard = board.map((row) => [...row]);
-    piece.forEach((row, y) => {
-      row.forEach((value, x) => {
-        if (value) newBoard[y + pos.y][x + pos.x] = 1;
-      });
-    });
-    return newBoard;
-  };
-
-  const sweepRows = (board) => {
-    let cleared = 0;
-    const newBoard = board.filter((row) => {
-      if (row.every((cell) => cell !== 0)) {
-        cleared++;
-        return false;
-      }
-      return true;
-    });
-
-    while (newBoard.length < ROWS) {
-      newBoard.unshift(Array(COLS).fill(0));
-    }
-
-    if (cleared > 0) {
-      setScore((s) => s + cleared);
-    }
-
-    return newBoard;
-  };
-
-  const drop = useCallback(() => {
-    const newPos = { ...pos, y: pos.y + 1 };
-    if (!collide(board, piece, newPos)) {
-      setPos(newPos);
-    } else {
-      const merged = merge(board, piece, pos);
-      const cleared = sweepRows(merged);
-      setBoard(cleared);
-
-      const newPiece = randomShape();
-      const newPosStart = { x: 3, y: 0 };
-
-      if (collide(cleared, newPiece, newPosStart)) {
-        setGameOver(true);
-      } else {
-        setPiece(newPiece);
-        setPos(newPosStart);
-      }
-    }
-  }, [board, piece, pos]);
-
-  const move = (dir) => {
-    const newPos = { ...pos, x: pos.x + dir };
-    if (!collide(board, piece, newPos)) {
-      setPos(newPos);
-    }
-  };
-
-  const rotatePiece = () => {
-    const rotated = rotate(piece);
-    if (!collide(board, rotated, pos)) {
-      setPiece(rotated);
-    }
-  };
-
-  useEffect(() => {
-    if (gameOver) return;
-    const interval = setInterval(drop, 500);
-    return () => clearInterval(interval);
-  }, [drop, gameOver]);
-
-  useEffect(() => {
-    const handleKey = (e) => {
+    document.addEventListener("keydown", e => {
       if (gameOver) return;
-      if (e.key === "ArrowLeft") move(-1);
-      if (e.key === "ArrowRight") move(1);
+
+      if (e.key === "ArrowLeft" && !collide(pos.x - 1, pos.y, piece)) pos.x--;
+      if (e.key === "ArrowRight" && !collide(pos.x + 1, pos.y, piece)) pos.x++;
       if (e.key === "ArrowDown") drop();
-      if (e.key === "ArrowUp") rotatePiece();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [drop, gameOver]);
+      if (e.key === "ArrowUp") {
+        const rotated = rotate(piece);
+        if (!collide(pos.x, pos.y, rotated)) piece = rotated;
+      }
+    });
 
-  const display = merge(board, piece, pos);
+    function loop() {
+      drop();
+      draw();
+      setTimeout(loop, 500);
+    }
 
-  return (
-    <div className="flex flex-col items-center">
-      <h1 className="text-2xl font-bold mb-2">Tetris Completo</h1>
-      <p className="mb-2">Pontuação: {score}</p>
-      {gameOver && <p className="text-red-500 font-bold">Game Over</p>}
-
-      <button
-        onClick={resetGame}
-        className="mb-3 px-4 py-2 bg-blue-600 text-white rounded-xl shadow"
-      >
-        Reiniciar Jogo
-      </button>
-
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: `repeat(${COLS}, 24px)` }}
-      >
-        {display.flat().map((cell, i) => (
-          <div
-            key={i}
-            className={`w-6 h-6 border ${cell ? "bg-blue-500" : "bg-gray-100"}`}
-          />
-        ))}
-      </div>
-
-      <div className="mt-4 text-sm text-gray-600">
-        Controles: ← → (mover) | ↑ (rotacionar) | ↓ (descer rápido)
-      </div>
-    </div>
-  );
-}
+    resetGame();
+    loop();
+  </script>
+</body>
+</html>
