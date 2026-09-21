@@ -2,7 +2,8 @@
 
 Uma versão do clássico Tetris feita em HTML, CSS e JavaScript puros, em um único arquivo — sem dependências, sem build, sem frameworks. Visual moderno em estilo neon/glass e totalmente responsivo, com suporte a teclado e a controles por toque.
 
-[Jogar agora](https://jonasdamaia.github.io/basicgame/)
+
+▶️ [Jogar agora](https://jonasdamaia.github.io/basicgame/)
 
 ## Demonstração
 
